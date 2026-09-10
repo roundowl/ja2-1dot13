@@ -2129,7 +2129,7 @@ INT8 DecideActionYellow(SOLDIERTYPE *pSoldier)
 					// possibly start YELLOW flanking
 					if( gGameExternalOptions.fAIYellowFlanking && 
 						( pSoldier->aiData.bAttitude == CUNNINGAID || pSoldier->aiData.bAttitude == CUNNINGSOLO ) &&
-						pSoldier->bTeam == ENEMY_TEAM &&
+						( pSoldier->bTeam == ENEMY_TEAM || pSoldier->bTeam == MILITIA_TEAM ) &&
 						( CountFriendsInDirection( pSoldier, sNoiseGridNo ) > 0 || NightTime() ) &&
 						( pSoldier->aiData.bOrders == SEEKENEMY ||
 						pSoldier->aiData.bOrders == FARPATROL ||
@@ -4079,7 +4079,7 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier)
 							// sevenfm: possibly start RED flanking
 							if (( pSoldier->aiData.bAttitude == CUNNINGAID || pSoldier->aiData.bAttitude == CUNNINGSOLO ||
 								( pSoldier->aiData.bAttitude == BRAVESOLO || pSoldier->aiData.bAttitude == BRAVEAID ) && fOvercrowded ) &&
-								pSoldier->bTeam == ENEMY_TEAM &&
+								( pSoldier->bTeam == ENEMY_TEAM || pSoldier->bTeam == MILITIA_TEAM ) &&
 								gAnimControl[ pSoldier->usAnimState ].ubHeight != ANIM_PRONE &&
 								!pSoldier->aiData.bUnderFire &&
 								pSoldier->pathing.bLevel == 0 &&
