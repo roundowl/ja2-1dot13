@@ -343,7 +343,16 @@ INT32 DoMessageBox( UINT8 ubStyle, const STR16 zString, UINT32 uiExitScreen, UIN
 	UnLockVideoSurface( FRAME_BUFFER );
 		
 	// Create top-level mouse region
-	MSYS_DefineRegion( &(gMsgBox.BackRegion), 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, MSYS_PRIORITY_HIGHEST - 1,	usCursor, MSYS_NO_CALLBACK, MsgBoxClickCallback );
+	// MSYS_PRIORITY_HIGHEST, not HIGHEST - 1: a message box raised over the tactical screen
+	// competes with the full-screen UI-lock regions gDisableRegion / gUserTurnRegion
+	// (Handle UI.cpp), which sit at MSYS_PRIORITY_HIGHEST and carry CURSOR_WAIT -- the one
+	// cursor flagged DELAY_START_CURSOR, so it draws nothing for its first second. Only the
+	// tactical screen re-applies it every frame (HandleAnimatedCursors), and that does not
+	// run while MSG_BOX_SCREEN is up, so the delay never expires and the pointer stays
+	// invisible everywhere except over the box's own buttons. Equal priority suffices: this
+	// region is added after those two and MSYS_AddRegionToList puts a later region ahead of
+	// its equals -- and the buttons, added after this one, still win over it.
+	MSYS_DefineRegion( &(gMsgBox.BackRegion), 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, MSYS_PRIORITY_HIGHEST,	usCursor, MSYS_NO_CALLBACK, MsgBoxClickCallback );
 
 	if( gGameSettings.fOptions[ TOPTION_DONT_MOVE_MOUSE ] == FALSE )
 	{

@@ -4973,7 +4973,7 @@ BOOLEAN CheckNPCDestination(SOLDIERTYPE *pSoldier, INT32 sGridNo)
 BOOLEAN AllowDeepWaterFlanking(SOLDIERTYPE *pSoldier)
 {
 	if (SoldierAI(pSoldier) &&
-		pSoldier->bTeam == ENEMY_TEAM &&
+		( pSoldier->bTeam == ENEMY_TEAM || pSoldier->bTeam == MILITIA_TEAM ) &&
 		pSoldier->aiData.bOrders == SEEKENEMY &&
 		(pSoldier->aiData.bAttitude == CUNNINGSOLO || gGameOptions.fNewTraitSystem && HAS_SKILL_TRAIT(pSoldier, ATHLETICS_NT)) &&
 		pSoldier->aiData.bAlertStatus >= STATUS_RED &&

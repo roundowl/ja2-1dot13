@@ -222,6 +222,9 @@ void EndTurn( );
 void EndTurn( UINT8 ubNextTeam );
 
 void StartPlayerTeamTurn( BOOLEAN fDoBattleSnd, BOOLEAN fEnteringCombatMode );
+
+// Ends the "spotted someone on their turn" demo pause and releases every soldier it halted.
+void ReleaseEnemySightingPause( void );
 void EndTacticalDemo( );
 
 void SelectSoldier( SoldierID usSoldierID, BOOLEAN fAcknowledge, BOOLEAN fForceReselect    );

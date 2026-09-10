@@ -2129,7 +2129,7 @@ INT8 DecideActionYellow(SOLDIERTYPE *pSoldier)
 					// possibly start YELLOW flanking
 					if( gGameExternalOptions.fAIYellowFlanking && 
 						( pSoldier->aiData.bAttitude == CUNNINGAID || pSoldier->aiData.bAttitude == CUNNINGSOLO ) &&
-						pSoldier->bTeam == ENEMY_TEAM &&
+						( pSoldier->bTeam == ENEMY_TEAM || pSoldier->bTeam == MILITIA_TEAM ) &&
 						( CountFriendsInDirection( pSoldier, sNoiseGridNo ) > 0 || NightTime() ) &&
 						( pSoldier->aiData.bOrders == SEEKENEMY ||
 						pSoldier->aiData.bOrders == FARPATROL ||
@@ -4079,7 +4079,7 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier)
 							// sevenfm: possibly start RED flanking
 							if (( pSoldier->aiData.bAttitude == CUNNINGAID || pSoldier->aiData.bAttitude == CUNNINGSOLO ||
 								( pSoldier->aiData.bAttitude == BRAVESOLO || pSoldier->aiData.bAttitude == BRAVEAID ) && fOvercrowded ) &&
-								pSoldier->bTeam == ENEMY_TEAM &&
+								( pSoldier->bTeam == ENEMY_TEAM || pSoldier->bTeam == MILITIA_TEAM ) &&
 								gAnimControl[ pSoldier->usAnimState ].ubHeight != ANIM_PRONE &&
 								!pSoldier->aiData.bUnderFire &&
 								pSoldier->pathing.bLevel == 0 &&
@@ -4442,6 +4442,38 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier)
 
 					DebugMsg (TOPIC_JA2,DBG_LEVEL_3,"decideactionred: run away!");
 					return(AI_ACTION_RUN_AWAY);
+				}
+			}
+
+			////////////////////////////////////////////////////////////////////////////
+			// STILL UNDER FIRE: TRY FOR REAL COVER BEFORE SETTLING FOR A CROUCH
+			// The TAKE COVER branch in the main RED loop above needs a known opponent, so a
+			// soldier being shot at by someone he cannot see never reaches it and just crouches
+			// on the tile he was hit on - in the open, in the light, for the rest of the fight.
+			// FindBestNearbyCover() honours RoamingRange(), so this stays a local shuffle.
+			////////////////////////////////////////////////////////////////////////////
+			if (ubCanMove && !SkipCoverCheck && gfTurnBasedAI && !gfHiddenInterrupt)
+			{
+				pSoldier->aiData.usActionData = FindBestNearbyCover(pSoldier, pSoldier->aiData.bAIMorale, &iDummy);
+
+				if (!TileIsOutOfBounds(pSoldier->aiData.usActionData) &&
+					pSoldier->aiData.usActionData != pSoldier->sGridNo)
+				{
+					DebugAI(AI_MSG_INFO, pSoldier, String("under fire from an unseen shooter - taking cover at %d", pSoldier->aiData.usActionData));
+					return(AI_ACTION_TAKE_COVER);
+				}
+
+				// no cover to be had - at least get out of the light
+				if (pSoldier->aiData.bOrders != SNIPER &&
+					InLightAtNight(pSoldier->sGridNo, pSoldier->pathing.bLevel))
+				{
+					pSoldier->aiData.usActionData = FindNearbyDarkerSpot(pSoldier);
+
+					if (!TileIsOutOfBounds(pSoldier->aiData.usActionData))
+					{
+						DebugAI(AI_MSG_INFO, pSoldier, String("under fire and lit up - moving to darker spot %d", pSoldier->aiData.usActionData));
+						return(AI_ACTION_LEAVE_WATER_GAS);
+					}
 				}
 			}
 
@@ -6138,9 +6170,12 @@ INT16 ubMinAPCost;
 		if (ubCanMove && pSoldier->aiData.bOrders != STATIONARY && !gfHiddenInterrupt &&
 			!(pSoldier->flags.uiStatusFlags & SOLDIER_BOXER) )
 		{
-			// make militia a bit more cautious
+			// make militia a bit more cautious. PreRandom(N) > ubChanceToReallyHit clears more
+			// often as N grows, so the militia bound has to be the LARGER one - it was 20 against
+			// everyone else's 40, which made them the reckless ones and did the opposite of the
+			// comment. Enemies keep 40; militia now break off a hopeless shot more readily.
 			// 3 (UINT16) CONVERSIONS HERE TO AVOID ERRORS.  GOTTHARD 7/15/08
-			if (pSoldier->bTeam == MILITIA_TEAM && (INT16)(PreRandom(20)) > BestAttack.ubChanceToReallyHit ||
+			if (pSoldier->bTeam == MILITIA_TEAM && (INT16)(PreRandom(60)) > BestAttack.ubChanceToReallyHit ||
 				pSoldier->bTeam != MILITIA_TEAM && (INT16)(PreRandom(40)) > BestAttack.ubChanceToReallyHit)
 			{
 				DebugAI(AI_MSG_INFO, pSoldier, String("Allow cover check"));
