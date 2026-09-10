@@ -1,5 +1,5 @@
 
-# JA2 v1.13
+# JA2 v1.13 - Introvert with AI Edition
 
 <br />
 <br />
@@ -12,7 +12,9 @@
 <br />
 <br />
 
+### From the maintainer
 
+This repo contains a fork of the v1.13 modification. Rule is simple - each time I encounter a bug, I type it in a little box, and it magically gets fixed.
 
 ### Preamble
 
