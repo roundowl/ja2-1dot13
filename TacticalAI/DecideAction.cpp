@@ -4446,6 +4446,38 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier)
 			}
 
 			////////////////////////////////////////////////////////////////////////////
+			// STILL UNDER FIRE: TRY FOR REAL COVER BEFORE SETTLING FOR A CROUCH
+			// The TAKE COVER branch in the main RED loop above needs a known opponent, so a
+			// soldier being shot at by someone he cannot see never reaches it and just crouches
+			// on the tile he was hit on - in the open, in the light, for the rest of the fight.
+			// FindBestNearbyCover() honours RoamingRange(), so this stays a local shuffle.
+			////////////////////////////////////////////////////////////////////////////
+			if (ubCanMove && !SkipCoverCheck && gfTurnBasedAI && !gfHiddenInterrupt)
+			{
+				pSoldier->aiData.usActionData = FindBestNearbyCover(pSoldier, pSoldier->aiData.bAIMorale, &iDummy);
+
+				if (!TileIsOutOfBounds(pSoldier->aiData.usActionData) &&
+					pSoldier->aiData.usActionData != pSoldier->sGridNo)
+				{
+					DebugAI(AI_MSG_INFO, pSoldier, String("under fire from an unseen shooter - taking cover at %d", pSoldier->aiData.usActionData));
+					return(AI_ACTION_TAKE_COVER);
+				}
+
+				// no cover to be had - at least get out of the light
+				if (pSoldier->aiData.bOrders != SNIPER &&
+					InLightAtNight(pSoldier->sGridNo, pSoldier->pathing.bLevel))
+				{
+					pSoldier->aiData.usActionData = FindNearbyDarkerSpot(pSoldier);
+
+					if (!TileIsOutOfBounds(pSoldier->aiData.usActionData))
+					{
+						DebugAI(AI_MSG_INFO, pSoldier, String("under fire and lit up - moving to darker spot %d", pSoldier->aiData.usActionData));
+						return(AI_ACTION_LEAVE_WATER_GAS);
+					}
+				}
+			}
+
+			////////////////////////////////////////////////////////////////////////////
 			// UNDER FIRE, DON'T WANNA/CAN'T RUN AWAY, SO CROUCH
 			////////////////////////////////////////////////////////////////////////////
 
