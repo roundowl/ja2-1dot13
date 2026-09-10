@@ -543,7 +543,6 @@ void ExamineZBufferForHiddenTiles( INT16 sStartPointX_M, INT16 sStartPointY_M, I
 
 //void ReRenderWorld(INT16 sLeft, INT16 sTop, INT16 sRight, INT16 sBottom);
 void ClearMarkedTiles(void);
-void CorrectRenderCenter( INT16 sRenderX, INT16 sRenderY, INT16 *pSNewX, INT16 *pSNewY );
 void ScrollBackground(UINT32 uiDirection, INT16 sScrollXIncrement, INT16 sScrollYIncrement );
 void CalcRenderParameters(INT16 sLeft, INT16 sTop, INT16 sRight, INT16 sBottom );
 void ResetRenderParameters(  );
@@ -3669,6 +3668,13 @@ static BOOLEAN HandleScrollDirections( UINT32 ScrollFlags, INT16 sScrollXStep, I
 	INT16		sTempX_W, sTempY_W;
 	BOOLEAN fUpOK, fLeftOK;
 	BOOLEAN fDownOK, fRightOK;
+
+	// NB the per-axis probes below pass fCheckOnly=TRUE unconditionally. They used to
+	// pass fCheckOnly through, so on the committing pass the first probe already moved
+	// gsRenderCenterX/Y and the second one measured - and moved - from there. The
+	// combined move was then applied as two chained writes, while ScrollBackground()
+	// shifted the saved framebuffer by the diagonal step regardless of whether either
+	// axis had actually been allowed.
 	INT16		sTempRenderCenterX, sTempRenderCenterY;
 
 	sTempRenderCenterX = sTempRenderCenterY = 0;
@@ -3686,7 +3692,7 @@ static BOOLEAN HandleScrollDirections( UINT32 ScrollFlags, INT16 sScrollXStep, I
 			fAGoodMove = TRUE;
 		}
 
-		if ( !fCheckOnly )
+		if ( !fCheckOnly && fMovedPos )
 		{
 			ScrollBackground(SCROLL_LEFT, sScrollXStep, sScrollYStep );
 		}
@@ -3704,7 +3710,7 @@ static BOOLEAN HandleScrollDirections( UINT32 ScrollFlags, INT16 sScrollXStep, I
 				fAGoodMove = TRUE;
 			}
 
-			if ( !fCheckOnly )
+			if ( !fCheckOnly && fMovedPos )
 			{
 				ScrollBackground(SCROLL_RIGHT, sScrollXStep, sScrollYStep );
 			}
@@ -3721,7 +3727,7 @@ static BOOLEAN HandleScrollDirections( UINT32 ScrollFlags, INT16 sScrollXStep, I
 				fAGoodMove = TRUE;
 			}
 
-			if ( !fCheckOnly )
+			if ( !fCheckOnly && fMovedPos )
 			{
 				ScrollBackground(SCROLL_UP, sScrollXStep, sScrollYStep );
 			}
@@ -3738,7 +3744,7 @@ static BOOLEAN HandleScrollDirections( UINT32 ScrollFlags, INT16 sScrollXStep, I
 				fAGoodMove = TRUE;
 			}
 
-			if ( !fCheckOnly )
+			if ( !fCheckOnly && fMovedPos )
 			{
 				ScrollBackground(SCROLL_DOWN, sScrollXStep, sScrollYStep );
 			}
@@ -3751,13 +3757,13 @@ static BOOLEAN HandleScrollDirections( UINT32 ScrollFlags, INT16 sScrollXStep, I
 			FromScreenToCellCoordinates( 0, (INT16)-sScrollYStep, &sTempX_W, &sTempY_W );
 			sTempRenderCenterX = gsRenderCenterX + sTempX_W;
 			sTempRenderCenterY = gsRenderCenterY + sTempY_W;
-			fUpOK=ApplyScrolling( sTempRenderCenterX, sTempRenderCenterY, FALSE, fCheckOnly );
+			fUpOK=ApplyScrolling( sTempRenderCenterX, sTempRenderCenterY, FALSE, TRUE );
 
 			// Check left
 			FromScreenToCellCoordinates( (INT16)-sScrollXStep, 0, &sTempX_W, &sTempY_W );
 			sTempRenderCenterX = gsRenderCenterX + sTempX_W;
 			sTempRenderCenterY = gsRenderCenterY + sTempY_W;
-			fLeftOK=ApplyScrolling( sTempRenderCenterX, sTempRenderCenterY, FALSE, fCheckOnly );
+			fLeftOK=ApplyScrolling( sTempRenderCenterX, sTempRenderCenterY, FALSE, TRUE );
 
 
 			if ( fLeftOK && fUpOK )
@@ -3767,7 +3773,7 @@ static BOOLEAN HandleScrollDirections( UINT32 ScrollFlags, INT16 sScrollXStep, I
 				sTempRenderCenterY = gsRenderCenterY + sTempY_W;
 				fAGoodMove = TRUE;
 
-				if ( !fCheckOnly )
+				if ( !fCheckOnly && ApplyScrolling( sTempRenderCenterX, sTempRenderCenterY, FALSE, FALSE ) )
 				{
 					ScrollBackground(SCROLL_UPLEFT, sScrollXStep, sScrollYStep );
 				}
@@ -3781,7 +3787,7 @@ static BOOLEAN HandleScrollDirections( UINT32 ScrollFlags, INT16 sScrollXStep, I
 				sTempRenderCenterX = gsRenderCenterX + sTempX_W;
 				sTempRenderCenterY = gsRenderCenterY + sTempY_W;
 
-				if ( !fCheckOnly )
+				if ( !fCheckOnly && ApplyScrolling( sTempRenderCenterX, sTempRenderCenterY, FALSE, FALSE ) )
 				{
 					ScrollBackground(SCROLL_UP, sScrollXStep, sScrollYStep );
 				}
@@ -3795,7 +3801,7 @@ static BOOLEAN HandleScrollDirections( UINT32 ScrollFlags, INT16 sScrollXStep, I
 				sTempRenderCenterX = gsRenderCenterX + sTempX_W;
 				sTempRenderCenterY = gsRenderCenterY + sTempY_W;
 
-				if ( !fCheckOnly )
+				if ( !fCheckOnly && ApplyScrolling( sTempRenderCenterX, sTempRenderCenterY, FALSE, FALSE ) )
 				{
 					ScrollBackground(SCROLL_LEFT, sScrollXStep, sScrollYStep );
 				}
@@ -3809,13 +3815,13 @@ static BOOLEAN HandleScrollDirections( UINT32 ScrollFlags, INT16 sScrollXStep, I
 			FromScreenToCellCoordinates( 0, (INT16)-sScrollYStep, &sTempX_W, &sTempY_W );
 			sTempRenderCenterX = gsRenderCenterX + sTempX_W;
 			sTempRenderCenterY = gsRenderCenterY + sTempY_W;
-			fUpOK=ApplyScrolling( sTempRenderCenterX, sTempRenderCenterY, FALSE, fCheckOnly );
+			fUpOK=ApplyScrolling( sTempRenderCenterX, sTempRenderCenterY, FALSE, TRUE );
 
 			// Check right
 			FromScreenToCellCoordinates( sScrollXStep, 0, &sTempX_W, &sTempY_W );
 			sTempRenderCenterX = gsRenderCenterX + sTempX_W;
 			sTempRenderCenterY = gsRenderCenterY + sTempY_W;
-			fRightOK=ApplyScrolling( sTempRenderCenterX, sTempRenderCenterY, FALSE, fCheckOnly );
+			fRightOK=ApplyScrolling( sTempRenderCenterX, sTempRenderCenterY, FALSE, TRUE );
 
 			if ( fUpOK && fRightOK )
 			{
@@ -3824,7 +3830,7 @@ static BOOLEAN HandleScrollDirections( UINT32 ScrollFlags, INT16 sScrollXStep, I
 				sTempRenderCenterY = gsRenderCenterY + sTempY_W;
 				fAGoodMove = TRUE;
 
-				if ( !fCheckOnly )
+				if ( !fCheckOnly && ApplyScrolling( sTempRenderCenterX, sTempRenderCenterY, FALSE, FALSE ) )
 				{
 					ScrollBackground(SCROLL_UPRIGHT, sScrollXStep, sScrollYStep );
 				}
@@ -3838,7 +3844,7 @@ static BOOLEAN HandleScrollDirections( UINT32 ScrollFlags, INT16 sScrollXStep, I
 				sTempRenderCenterX = gsRenderCenterX + sTempX_W;
 				sTempRenderCenterY = gsRenderCenterY + sTempY_W;
 
-				if ( !fCheckOnly )
+				if ( !fCheckOnly && ApplyScrolling( sTempRenderCenterX, sTempRenderCenterY, FALSE, FALSE ) )
 				{
 					ScrollBackground(SCROLL_UP, sScrollXStep, sScrollYStep );
 				}
@@ -3851,7 +3857,7 @@ static BOOLEAN HandleScrollDirections( UINT32 ScrollFlags, INT16 sScrollXStep, I
 				sTempRenderCenterX = gsRenderCenterX + sTempX_W;
 				sTempRenderCenterY = gsRenderCenterY + sTempY_W;
 
-				if ( !fCheckOnly )
+				if ( !fCheckOnly && ApplyScrolling( sTempRenderCenterX, sTempRenderCenterY, FALSE, FALSE ) )
 				{
 					ScrollBackground(SCROLL_RIGHT, sScrollXStep, sScrollYStep );
 				}
@@ -3864,13 +3870,13 @@ static BOOLEAN HandleScrollDirections( UINT32 ScrollFlags, INT16 sScrollXStep, I
 			FromScreenToCellCoordinates( 0, sScrollYStep, &sTempX_W, &sTempY_W );
 			sTempRenderCenterX = gsRenderCenterX + sTempX_W;
 			sTempRenderCenterY = gsRenderCenterY + sTempY_W;
-			fDownOK=ApplyScrolling( sTempRenderCenterX, sTempRenderCenterY, FALSE, fCheckOnly );
+			fDownOK=ApplyScrolling( sTempRenderCenterX, sTempRenderCenterY, FALSE, TRUE );
 
 			// Check left.....
 			FromScreenToCellCoordinates( (INT16)-sScrollXStep, 0, &sTempX_W, &sTempY_W );
 			sTempRenderCenterX = gsRenderCenterX + sTempX_W;
 			sTempRenderCenterY = gsRenderCenterY + sTempY_W;
-			fLeftOK=ApplyScrolling( sTempRenderCenterX, sTempRenderCenterY, FALSE, fCheckOnly );
+			fLeftOK=ApplyScrolling( sTempRenderCenterX, sTempRenderCenterY, FALSE, TRUE );
 
 			if ( fLeftOK && fDownOK )
 			{
@@ -3879,7 +3885,7 @@ static BOOLEAN HandleScrollDirections( UINT32 ScrollFlags, INT16 sScrollXStep, I
 				sTempRenderCenterX = gsRenderCenterX + sTempX_W;
 				sTempRenderCenterY = gsRenderCenterY + sTempY_W;
 
-				if ( !fCheckOnly )
+				if ( !fCheckOnly && ApplyScrolling( sTempRenderCenterX, sTempRenderCenterY, FALSE, FALSE ) )
 				{
 					ScrollBackground(SCROLL_DOWNLEFT, sScrollXStep, sScrollYStep );
 				}
@@ -3892,9 +3898,9 @@ static BOOLEAN HandleScrollDirections( UINT32 ScrollFlags, INT16 sScrollXStep, I
 					sTempRenderCenterY = gsRenderCenterY + sTempY_W;
 					fAGoodMove = TRUE;
 
-					if ( !fCheckOnly )
-					{
-						ScrollBackground(SCROLL_LEFT, sScrollXStep, sScrollYStep );
+				if ( !fCheckOnly && ApplyScrolling( sTempRenderCenterX, sTempRenderCenterY, FALSE, FALSE ) )
+				{
+					ScrollBackground(SCROLL_LEFT, sScrollXStep, sScrollYStep );
 					}
 			}
 			else if ( fDownOK )
@@ -3904,9 +3910,9 @@ static BOOLEAN HandleScrollDirections( UINT32 ScrollFlags, INT16 sScrollXStep, I
 					sTempRenderCenterY = gsRenderCenterY + sTempY_W;
 					fAGoodMove = TRUE;
 
-					if ( !fCheckOnly )
-					{
-						ScrollBackground(SCROLL_DOWN, sScrollXStep, sScrollYStep );
+				if ( !fCheckOnly && ApplyScrolling( sTempRenderCenterX, sTempRenderCenterY, FALSE, FALSE ) )
+				{
+					ScrollBackground(SCROLL_DOWN, sScrollXStep, sScrollYStep );
 					}
 			}
 	}
@@ -3917,13 +3923,13 @@ static BOOLEAN HandleScrollDirections( UINT32 ScrollFlags, INT16 sScrollXStep, I
 			FromScreenToCellCoordinates( sScrollXStep, 0, &sTempX_W, &sTempY_W );
 			sTempRenderCenterX = gsRenderCenterX + sTempX_W;
 			sTempRenderCenterY = gsRenderCenterY + sTempY_W;
-			fRightOK=ApplyScrolling( sTempRenderCenterX, sTempRenderCenterY, FALSE, fCheckOnly );
+			fRightOK=ApplyScrolling( sTempRenderCenterX, sTempRenderCenterY, FALSE, TRUE );
 
 			// Check down
 			FromScreenToCellCoordinates( 0, sScrollYStep, &sTempX_W, &sTempY_W );
 			sTempRenderCenterX = gsRenderCenterX + sTempX_W;
 			sTempRenderCenterY = gsRenderCenterY + sTempY_W;
-			fDownOK=ApplyScrolling( sTempRenderCenterX, sTempRenderCenterY, FALSE, fCheckOnly );
+			fDownOK=ApplyScrolling( sTempRenderCenterX, sTempRenderCenterY, FALSE, TRUE );
 
 			if ( fDownOK && fRightOK )
 			{
@@ -3932,7 +3938,7 @@ static BOOLEAN HandleScrollDirections( UINT32 ScrollFlags, INT16 sScrollXStep, I
 				sTempRenderCenterY = gsRenderCenterY + sTempY_W;
 				fAGoodMove = TRUE;
 
-				if ( !fCheckOnly )
+				if ( !fCheckOnly && ApplyScrolling( sTempRenderCenterX, sTempRenderCenterY, FALSE, FALSE ) )
 				{
 					ScrollBackground( SCROLL_DOWNRIGHT, sScrollXStep, sScrollYStep );
 				}
@@ -3945,7 +3951,7 @@ static BOOLEAN HandleScrollDirections( UINT32 ScrollFlags, INT16 sScrollXStep, I
 					sTempRenderCenterY = gsRenderCenterY + sTempY_W;
 					fAGoodMove = TRUE;
 
-					if ( !fCheckOnly )
+					if ( !fCheckOnly && ApplyScrolling( sTempRenderCenterX, sTempRenderCenterY, FALSE, FALSE ) )
 					{
 						ScrollBackground( SCROLL_DOWN, sScrollXStep, sScrollYStep );
 					}
@@ -3957,7 +3963,7 @@ static BOOLEAN HandleScrollDirections( UINT32 ScrollFlags, INT16 sScrollXStep, I
 					sTempRenderCenterY = gsRenderCenterY + sTempY_W;
 					fAGoodMove = TRUE;
 
-					if ( !fCheckOnly )
+					if ( !fCheckOnly && ApplyScrolling( sTempRenderCenterX, sTempRenderCenterY, FALSE, FALSE ) )
 					{
 						ScrollBackground( SCROLL_RIGHT, sScrollXStep, sScrollYStep );
 					}
@@ -4407,6 +4413,148 @@ void InitRenderParams( UINT8 ubRestrictionID )
 
 }
 
+// Convert a render centre in world coords into the "screen" coords the world
+// bounds gsTLX/gsTRX/gsBLX/gsBRX are expressed in.
+static void RenderCenterToScreen( INT16 sRenderCenterX, INT16 sRenderCenterY, INT16 *psScreenX, INT16 *psScreenY )
+{
+	INT16 sScreenX, sScreenY;
+
+	FromCellToScreenCoordinates( (INT16)( sRenderCenterX - gCenterWorldX ), (INT16)( sRenderCenterY - gCenterWorldY ), &sScreenX, &sScreenY );
+
+	*psScreenX = sScreenX + gsCX;
+	*psScreenY = sScreenY + gsCY - 10;
+}
+
+// The exact inverse of RenderCenterToScreen(). The old clamp inverted with a bare
+// FromScreenToCellCoordinates(), which undoes neither the gsCX/gsCY offset nor the
+// gCenterWorld one; on a square map that cancels to a constant bias of
+// ROOF_LEVEL_HEIGHT/4 world units, but on a non-square map gsCX is not 0 and the
+// error is unbounded.
+static void ScreenToRenderCenter( INT16 sScreenX, INT16 sScreenY, INT16 *psRenderCenterX, INT16 *psRenderCenterY )
+{
+	INT32 iRelX = (INT32)sScreenX - gsCX;
+	INT32 iRelY = (INT32)sScreenY - gsCY + 10;
+
+	*psRenderCenterX = (INT16)( ( ( iRelX + 2 * iRelY ) / 4 ) + gCenterWorldX );
+	*psRenderCenterY = (INT16)( ( ( 2 * iRelY - iRelX ) / 4 ) + gCenterWorldY );
+}
+
+// Is the viewport, centred on this render centre, still inside the world bounds?
+// Returns TRUE when it is, and always fills the four out-flags.
+static BOOLEAN RenderCenterInBounds( INT16 sRenderCenterX, INT16 sRenderCenterY,
+									BOOLEAN *pfOutLeft, BOOLEAN *pfOutRight, BOOLEAN *pfOutTop, BOOLEAN *pfOutBottom )
+{
+	INT16	sScreenCenterX, sScreenCenterY;
+	INT16	sX_S, sY_S;
+	double	dAngle;
+
+	RenderCenterToScreen( sRenderCenterX, sRenderCenterY, &sScreenCenterX, &sScreenCenterY );
+
+	sX_S = ( gsVIEWPORT_END_X - gsVIEWPORT_START_X ) / 2;
+	sY_S = ( gsVIEWPORT_END_Y - gsVIEWPORT_START_Y ) / 2;
+
+	*pfOutLeft = *pfOutRight = *pfOutTop = *pfOutBottom = FALSE;
+
+	// TOP LEFT CORNER
+	dAngle = atan2( (double)( ( sScreenCenterX - sX_S ) - gsTLX ), (double)( ( sScreenCenterY - sY_S ) - gsTLY ) );
+	if ( dAngle < 0 )			*pfOutLeft = TRUE;
+	else if ( dAngle > PI/2 )	*pfOutTop = TRUE;
+
+	// TOP RIGHT CORNER
+	dAngle = atan2( (double)( gsTRX - ( sScreenCenterX + sX_S ) ), (double)( ( sScreenCenterY - sY_S ) - gsTRY ) );
+	if ( dAngle < 0 )			*pfOutRight = TRUE;
+	else if ( dAngle > PI/2 )	*pfOutTop = TRUE;
+
+	// BOTTOM LEFT CORNER
+	dAngle = atan2( (double)( ( sScreenCenterX - sX_S ) - gsBLX ), (double)( gsBLY - ( sScreenCenterY + sY_S ) ) );
+	if ( dAngle < 0 )			*pfOutLeft = TRUE;
+	else if ( dAngle > PI/2 )	*pfOutBottom = TRUE;
+
+	// BOTTOM RIGHT CORNER
+	dAngle = atan2( (double)( gsBRX - ( sScreenCenterX + sX_S ) ), (double)( gsBRY - ( sScreenCenterY + sY_S ) ) );
+	if ( dAngle < 0 )			*pfOutRight = TRUE;
+	else if ( dAngle > PI/2 )	*pfOutBottom = TRUE;
+
+	return( !( *pfOutLeft || *pfOutRight || *pfOutTop || *pfOutBottom ) );
+}
+
+// Pull an out-of-bounds render centre back inside the world. Clamps in screen space
+// against the largest axis-aligned box that fits inside the world's screen bounds,
+// then converts back and re-snaps to a cell centre.
+static void ClampRenderCenter( INT16 *psRenderCenterX, INT16 *psRenderCenterY )
+{
+	INT16	sScreenCenterX, sScreenCenterY;
+	INT16	sX_S, sY_S;
+	INT16	sLimitLeft, sLimitRight, sLimitTop, sLimitBottom;
+	INT16	sLo, sHi;
+	INT16	sNewX, sNewY, sMult;
+	BOOLEAN	fOutLeft, fOutRight, fOutTop, fOutBottom;
+	BOOLEAN	fMapFitsViewport = FALSE;
+	UINT8	ubTries;
+
+	RenderCenterToScreen( *psRenderCenterX, *psRenderCenterY, &sScreenCenterX, &sScreenCenterY );
+
+	sX_S = ( gsVIEWPORT_END_X - gsVIEWPORT_START_X ) / 2;
+	sY_S = ( gsVIEWPORT_END_Y - gsVIEWPORT_START_Y ) / 2;
+
+	// The world bounds are a slightly flared trapezoid; take the tightest edge of each
+	// pair so the clamped result satisfies all four corner tests at once.
+	sLimitLeft		= __max( gsTLX, gsBLX );
+	sLimitRight		= __min( gsTRX, gsBRX );
+	sLimitTop		= __max( gsTLY, gsTRY );
+	sLimitBottom	= __min( gsBLY, gsBRY );
+
+	// Clamp both axes independently. The old code ran four separate blocks, each
+	// writing *both* axes from a correction that only fixed one of them, so in a
+	// corner whichever block ran last threw the other clamp away.
+	sLo = sLimitLeft + sX_S;
+	sHi = sLimitRight - sX_S;
+	if ( sLo > sHi )					// viewport wider than the map: centre it
+	{
+		sScreenCenterX = (INT16)( ( sLimitLeft + sLimitRight ) / 2 );
+		fMapFitsViewport = TRUE;
+	}
+	else if ( sScreenCenterX < sLo )	sScreenCenterX = sLo;
+	else if ( sScreenCenterX > sHi )	sScreenCenterX = sHi;
+
+	sLo = sLimitTop + sY_S;
+	sHi = sLimitBottom - sY_S;
+	if ( sLo > sHi )					// viewport taller than the map: centre it
+	{
+		sScreenCenterY = (INT16)( ( sLimitTop + sLimitBottom ) / 2 );
+		fMapFitsViewport = TRUE;
+	}
+	else if ( sScreenCenterY < sLo )	sScreenCenterY = sLo;
+	else if ( sScreenCenterY > sHi )	sScreenCenterY = sHi;
+
+	ScreenToRenderCenter( sScreenCenterX, sScreenCenterY, &sNewX, &sNewY );
+
+	// Snap to a cell centre, then nudge back in if that snap crossed the edge again.
+	// One step is always enough - a cell snap moves the centre by less than one cell -
+	// but the loop is bounded anyway.
+	sMult = sNewX / CELL_X_SIZE;
+	sNewX = ( sMult * CELL_X_SIZE ) + ( CELL_X_SIZE / 2 );
+	sMult = sNewY / CELL_Y_SIZE;
+	sNewY = ( sMult * CELL_Y_SIZE ) + ( CELL_Y_SIZE / 2 );
+
+	// On a map smaller than the viewport (the Rebel Basement case, or any map at a
+	// high enough resolution) no centre can satisfy the corner test, so there is
+	// nowhere to nudge to - the centred position above is the answer.
+	for ( ubTries = 0; !fMapFitsViewport && ubTries < 4; ++ubTries )
+	{
+		if ( RenderCenterInBounds( sNewX, sNewY, &fOutLeft, &fOutRight, &fOutTop, &fOutBottom ) )
+			break;
+
+		if ( fOutLeft )			{ sNewX += CELL_X_SIZE; sNewY -= CELL_Y_SIZE; }
+		else if ( fOutRight )	{ sNewX -= CELL_X_SIZE; sNewY += CELL_Y_SIZE; }
+		else if ( fOutTop )		{ sNewX += CELL_X_SIZE; sNewY += CELL_Y_SIZE; }
+		else					{ sNewX -= CELL_X_SIZE; sNewY -= CELL_Y_SIZE; }
+	}
+
+	*psRenderCenterX = sNewX;
+	*psRenderCenterY = sNewY;
+}
+
 // WANNE: Scrolling: Only scroll, if the map is larger than the radar map
 // For example: Do not allow scrolling in Rebel Basement.
 // Appy? HEahehahehahehae.....
@@ -4419,23 +4567,13 @@ BOOLEAN ApplyScrolling( INT16 sTempRenderCenterX, INT16 sTempRenderCenterY, BOOL
 	BOOLEAN		fOutBottom = FALSE;
 
 
-	double	dOpp, dAdj, dAngle;
-
 	INT16 sTopLeftWorldX, sTopLeftWorldY;
 	INT16 sTopRightWorldX, sTopRightWorldY;
 	INT16 sBottomLeftWorldX, sBottomLeftWorldY;
 	INT16 sBottomRightWorldX, sBottomRightWorldY;
 
-	INT16 sTempPosX_W, sTempPosY_W;
-
-
-	// For debug text for all 4 angles
-	double at1, at2, at3, at4;
-
 	INT16	sX_S, sY_S;
 	INT16 sScreenCenterX, sScreenCenterY;
-	INT16 sDistToCenterY, sDistToCenterX;
-	INT16 sNewScreenX, sNewScreenY;
 	INT16	sMult;
 
 	INT16 sRadarTLX, sRadarTLY;
@@ -4458,21 +4596,8 @@ BOOLEAN ApplyScrolling( INT16 sTempRenderCenterX, INT16 sTempRenderCenterY, BOOL
 	sTempRenderCenterY = ( sMult * CELL_Y_SIZE ) + ( CELL_Y_SIZE / 2 );
 
 
-	// Find the diustance from render center to true world center
-	sDistToCenterX = sTempRenderCenterX - gCenterWorldX;
-	sDistToCenterY = sTempRenderCenterY - gCenterWorldY;
-
 	// From render center in world coords, convert to render center in "screen" coords
-	FromCellToScreenCoordinates( sDistToCenterX , sDistToCenterY, &sScreenCenterX, &sScreenCenterY );
-
-	// Subtract screen center
-	sScreenCenterX += gsCX;
-	sScreenCenterY += gsCY;
-
-	// Adjust for offset position on screen
-	sScreenCenterX -= 0;
-	sScreenCenterY -= 10;
-
+	RenderCenterToScreen( sTempRenderCenterX, sTempRenderCenterY, &sScreenCenterX, &sScreenCenterY );
 
 	// Get corners in screen coords
 	// TOP LEFT
@@ -4546,78 +4671,7 @@ BOOLEAN ApplyScrolling( INT16 sTempRenderCenterX, INT16 sTempRenderCenterY, BOOL
 	//if ((fAllowScrollingHorizontal || fAllowScrollingVertical) && gfDialogControl)
 	//{
 
-	// Get angles
-	// TOP LEFT CORNER FIRST
-	dOpp = sTopLeftWorldY - gsTLY;
-	dAdj = sTopLeftWorldX - gsTLX;
-
-	dAngle = (double)atan2( dAdj, dOpp );
-	at1 = dAngle * 180 / PI;
-
-	if ( dAngle < 0 )
-	{
-		fOutLeft = TRUE;
-	}
-	else	if ( dAngle > PI/2 )
-	{
-		fOutTop = TRUE;
-	}
-
-	// TOP RIGHT CORNER
-	dOpp = sTopRightWorldY - gsTRY;
-	dAdj = gsTRX - sTopRightWorldX;
-
-	dAngle = (double)atan2( dAdj, dOpp );
-	at2 = dAngle * 180 / PI;
-
-	if ( dAngle < 0 )
-	{
-		fOutRight = TRUE;
-	}
-	else if ( dAngle > PI/2 )
-	{
-		fOutTop = TRUE;
-	}
-
-
-	// BOTTOM LEFT CORNER
-	dOpp = gsBLY - sBottomLeftWorldY;
-	dAdj = sBottomLeftWorldX - gsBLX;
-
-	dAngle = (double)atan2( dAdj, dOpp );
-	at3 = dAngle * 180 / PI;
-
-	if ( dAngle < 0 )
-	{
-		fOutLeft = TRUE;
-	}
-	else if ( dAngle > PI/2 )
-	{
-		fOutBottom = TRUE;
-	}
-
-	// BOTTOM RIGHT CORNER
-	dOpp = gsBRY - sBottomRightWorldY;
-	dAdj = gsBRX - sBottomRightWorldX;
-
-	dAngle = (double)atan2( dAdj, dOpp );
-	at4 = dAngle * 180 / PI;
-
-	if ( dAngle < 0 )
-	{
-		fOutRight = TRUE;
-	}
-	else if ( dAngle > PI/2 )
-	{
-		fOutBottom = TRUE;
-	}
-
-	sprintf( gDebugStr, "Angles: %d %d %d %d", (int)at1, (int)at2, (int)at3, (int)at4 );
-
-	if ( !fOutRight && !fOutLeft && !fOutTop && !fOutBottom )
-	{
-		fScrollGood = TRUE;
-	}
+	fScrollGood = RenderCenterInBounds( sTempRenderCenterX, sTempRenderCenterY, &fOutLeft, &fOutRight, &fOutTop, &fOutBottom );
 
 	// If in editor, anything goes
 	if ( gfEditMode && _KeyDown( SHIFT ) )
@@ -4637,49 +4691,8 @@ BOOLEAN ApplyScrolling( INT16 sTempRenderCenterX, INT16 sTempRenderCenterY, BOOL
 		// Force adjustment, if true
 		if ( fForceAdjust )
 		{
-			if ( fOutRight )
-			{
-				CorrectRenderCenter( (INT16)( gsTRX - sX_S ) , sScreenCenterY , &sNewScreenX, &sNewScreenY );
-				FromScreenToCellCoordinates( sNewScreenX, sNewScreenY , &sTempPosX_W, &sTempPosY_W );
-
-				sTempRenderCenterX = sTempPosX_W;
-				sTempRenderCenterY = sTempPosY_W;
-				fScrollGood = TRUE;
-			}
-			
-			if ( fOutTop )
-			{
-				// Adjust screen coordinates on the Y!
-				CorrectRenderCenter( sScreenCenterX, (INT16)(gsTLY + sY_S ), &sNewScreenX, &sNewScreenY );
-				FromScreenToCellCoordinates( sNewScreenX, sNewScreenY , &sTempPosX_W, &sTempPosY_W );
-
-				sTempRenderCenterX = sTempPosX_W;
-				sTempRenderCenterY = sTempPosY_W;
-
-				fScrollGood = TRUE;
-			}
-
-			if ( fOutBottom )
-			{
-				// OK, Ajust this since we get rounding errors in our two different calculations.
-				CorrectRenderCenter( sScreenCenterX, (INT16)(gsBLY - sY_S - 50 ), &sNewScreenX, &sNewScreenY );
-				FromScreenToCellCoordinates( sNewScreenX, sNewScreenY , &sTempPosX_W, &sTempPosY_W );
-
-				sTempRenderCenterX = sTempPosX_W;
-				sTempRenderCenterY = sTempPosY_W;
-				fScrollGood = TRUE;
-			}
-
-			if ( fOutLeft )
-			{
-				CorrectRenderCenter( (INT16)( gsTLX + sX_S ) , sScreenCenterY , &sNewScreenX, &sNewScreenY );
-				FromScreenToCellCoordinates( sNewScreenX, sNewScreenY , &sTempPosX_W, &sTempPosY_W );
-
-				sTempRenderCenterX = sTempPosX_W;
-				sTempRenderCenterY = sTempPosY_W;
-
-				fScrollGood = TRUE;
-			}
+			ClampRenderCenter( &sTempRenderCenterX, &sTempRenderCenterY );
+			fScrollGood = TRUE;
 		}
 		else
 		{
@@ -4739,9 +4752,20 @@ BOOLEAN ApplyScrolling( INT16 sTempRenderCenterX, INT16 sTempRenderCenterY, BOOL
 
 				gsRenderCenterY = ( sMult * CELL_Y_SIZE ) + ( CELL_Y_SIZE / 2 );
 
-				//gsRenderCenterX = sTempRenderCenterX;
-				//gsRenderCenterY = sTempRenderCenterY;
+				// Recompute the corners from the centre we are actually keeping. They used
+				// to be left over from the pre-clamp position, so after a forced adjustment
+				// mouse hit-testing (Soldier Find.cpp) and sound panning disagreed with
+				// what had been drawn.
+				RenderCenterToScreen( gsRenderCenterX, gsRenderCenterY, &sScreenCenterX, &sScreenCenterY );
 
+				sTopLeftWorldX		= sScreenCenterX - sX_S;
+				sTopLeftWorldY		= sScreenCenterY - sY_S;
+				sTopRightWorldX		= sScreenCenterX + sX_S;
+				sTopRightWorldY		= sScreenCenterY - sY_S;
+				sBottomLeftWorldX	= sScreenCenterX - sX_S;
+				sBottomLeftWorldY	= sScreenCenterY + sY_S;
+				sBottomRightWorldX	= sScreenCenterX + sX_S;
+				sBottomRightWorldY	= sScreenCenterY + sY_S;
 
 				gsTopLeftWorldX = sTopLeftWorldX - gsTLX;
 					gsTopRightWorldX = sTopRightWorldX - gsTLX;
@@ -6973,39 +6997,6 @@ BOOLEAN Blt8BPPDataTo16BPPBufferTransZTransShadowIncObscureClipAlpha(UINT16 *pBu
 
 
 
-void CorrectRenderCenter( INT16 sRenderX, INT16 sRenderY, INT16 *pSNewX, INT16 *pSNewY )
-{
-	INT16 sScreenX, sScreenY;
-	INT16 sNumXSteps, sNumYSteps;
-
-	// Use radar scale values to get screen values, then convert ot map values, rounding to nearest middle tile
-	sScreenX = (INT16) sRenderX;
-	sScreenY = (INT16) sRenderY;
-
-	// Adjust for offsets!
-	sScreenX += 0;
-	sScreenY += 10;
-
-	// Adjust to viewport start!
-	sScreenX -= ( ( gsVIEWPORT_END_X - gsVIEWPORT_START_X ) /2 );
-	sScreenY -= ( ( gsVIEWPORT_END_Y - gsVIEWPORT_START_Y ) /2 );
-
-	//Make sure these coordinates are multiples of scroll steps
-	sNumXSteps = sScreenX  / gubNewScrollXSpeeds[ gfDoVideoScroll ][ gubCurScrollSpeedID ];
-	sNumYSteps = sScreenY  / gubNewScrollYSpeeds[ gfDoVideoScroll ][ gubCurScrollSpeedID ];
-
-
-	sScreenX = ( sNumXSteps * gubNewScrollXSpeeds[ gfDoVideoScroll ][ gubCurScrollSpeedID ] );
-	sScreenY = ( sNumYSteps * gubNewScrollYSpeeds[ gfDoVideoScroll ][ gubCurScrollSpeedID ]);
-
-	// Adjust back
-	sScreenX += ( ( gsVIEWPORT_END_X - gsVIEWPORT_START_X ) /2 );
-	sScreenY += ( ( gsVIEWPORT_END_Y - gsVIEWPORT_START_Y ) /2 );
-
-	*pSNewX = sScreenX;
-	*pSNewY = sScreenY;
-
-}
 
 
 
