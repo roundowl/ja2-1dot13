@@ -41,6 +41,8 @@
 	#include "ASD.h"				// added by Flugente
 	#include "Interface Panels.h"
 	#include "Strategic Transport Groups.h"
+	#include "opplist.h"				// MAX_MISC_NOISE_DURATION
+	#include "Isometric Utils.h"		// MAPROWCOLTOPOS, via CENTRAL_GRIDNO
 
 #ifdef JA2BETAVERSION
 	extern BOOLEAN gfClearCreatureQuest;
@@ -2528,6 +2530,12 @@ void AddMilitiaToBattle( GROUP *pGroup, UINT8 ubStrategicInsertionCode, UINT16 u
 			}
 
 			pSoldier->ubInsertionDirection = bDesiredDirection;
+			// ...and ubDirection as well: these militia are placed with ubStrategicInsertionCode
+			// INSERTION_CODE_GRIDNO, and that branch of InternalAddSoldierToSector() hands
+			// AddSoldierToSectorGridNo() pSoldier->ubDirection rather than the direction it just
+			// derived from ubInsertionDirection. Left alone they all face NORTH - the zeroed
+			// bp.ubDirection out of TacticalCreateMilitia() - whichever edge they came in from.
+			pSoldier->ubDirection = bDesiredDirection;
 			//Setup the position
 			if ( ubCurrSlot < MapEdgepointInfo.ubNumPoints )
 			{ //using an edgepoint
@@ -2551,6 +2559,12 @@ void AddMilitiaToBattle( GROUP *pGroup, UINT8 ubStrategicInsertionCode, UINT16 u
 			}
 
 			pSoldier->ubInsertionDirection = bDesiredDirection;
+			// ...and ubDirection as well: these militia are placed with ubStrategicInsertionCode
+			// INSERTION_CODE_GRIDNO, and that branch of InternalAddSoldierToSector() hands
+			// AddSoldierToSectorGridNo() pSoldier->ubDirection rather than the direction it just
+			// derived from ubInsertionDirection. Left alone they all face NORTH - the zeroed
+			// bp.ubDirection out of TacticalCreateMilitia() - whichever edge they came in from.
+			pSoldier->ubDirection = bDesiredDirection;
 			//Setup the position
 			if ( ubCurrSlot < MapEdgepointInfo.ubNumPoints )
 			{ //using an edgepoint
@@ -2574,6 +2588,12 @@ void AddMilitiaToBattle( GROUP *pGroup, UINT8 ubStrategicInsertionCode, UINT16 u
 			}
 
 			pSoldier->ubInsertionDirection = bDesiredDirection;
+			// ...and ubDirection as well: these militia are placed with ubStrategicInsertionCode
+			// INSERTION_CODE_GRIDNO, and that branch of InternalAddSoldierToSector() hands
+			// AddSoldierToSectorGridNo() pSoldier->ubDirection rather than the direction it just
+			// derived from ubInsertionDirection. Left alone they all face NORTH - the zeroed
+			// bp.ubDirection out of TacticalCreateMilitia() - whichever edge they came in from.
+			pSoldier->ubDirection = bDesiredDirection;
 			//Setup the position
 			if ( ubCurrSlot < MapEdgepointInfo.ubNumPoints )
 			{ //using an edgepoint
@@ -2585,6 +2605,24 @@ void AddMilitiaToBattle( GROUP *pGroup, UINT8 ubStrategicInsertionCode, UINT16 u
 				pSoldier->ubStrategicInsertionCode = ubStrategicInsertionCode;
 			}
 			UpdateMercInSector( pSoldier, gWorldSectorX, gWorldSectorY, 0 );
+		}
+
+		// TacticalCreateMilitia() hands out STATIONARY orders, and CheckForChangingOrders() deliberately
+		// refuses to promote a STATIONARY militiaman to SEEKENEMY. Every other militia insertion path
+		// overrides the orders on arrival; this one has to as well, or militia that walk into an ongoing
+		// battle stand on their entry tile for the rest of it - they will not advance, take cover, or
+		// break off when fired upon.
+		if ( gTacticalStatus.Team[ MILITIA_TEAM ].bAwareOfOpposition )
+		{
+			pSoldier->aiData.bOrders = SEEKENEMY;
+			pSoldier->aiData.bAlertStatus = STATUS_RED;
+		}
+		else
+		{
+			pSoldier->aiData.bOrders = ONGUARD;
+			pSoldier->aiData.bAlertStatus = STATUS_YELLOW;
+			pSoldier->aiData.sNoiseGridno = (CENTRAL_GRIDNO + ( Random( CENTRAL_RADIUS * 2 + 1 ) - CENTRAL_RADIUS ) + ( Random( CENTRAL_RADIUS * 2 + 1 ) - CENTRAL_RADIUS ) * WORLD_COLS);
+			pSoldier->aiData.ubNoiseVolume = MAX_MISC_NOISE_DURATION;
 		}
 
 		// HEADROCK HAM 3.2: enemy reinforcements arrive with 0 APs.
