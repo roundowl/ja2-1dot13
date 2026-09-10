@@ -2293,6 +2293,30 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 						default:
 							// IF we are here - something is wrong - we should have a death animation here
 							DebugMsg( TOPIC_JA2, DBG_LEVEL_3, String( "Soldier Ani: Death sequence needed for animation %d", pSoldier->usAnimState ) );
+							DebugAI( AI_MSG_INFO, pSoldier, String( "no death sequence for anim %s (%d), body %d - killing directly",
+								gAnimControl[pSoldier->usAnimState].zAnimStr, pSoldier->usAnimState, pSoldier->ubBodyType ) );
+
+							// Falling through with nothing done used to wedge the soldier permanently.
+							// Every civilian body type reaches death through CIV_COWER_HIT or CIV_DIE2
+							// (and CRIPPLECIV through CRIPPLE_HIT), none of which the switch above
+							// handles, so a civilian killed while cowering landed here. With no state
+							// change the animation never reached opcode 440, so CheckForAndHandleSoldierDeath()
+							// never ran: no corpse was made, the soldier's structure kept blocking its
+							// tile, flags.fForceShade stayed set from opcode 438 - painting the body
+							// white for the rest of the battle - and the attacker was never released,
+							// so ubAttackBusyCount held and the AI stalled until the deadlock breaker.
+							// Do what the Blood & Gore = OFF path below does instead. That covers every
+							// unhandled animation, not just the civilian ones.
+							{
+								BOOLEAN fMadeCorpse;
+
+								pSoldier->flags.fForceShade = FALSE;
+
+								CheckForAndHandleSoldierDeath( pSoldier, &fMadeCorpse );
+
+								// ATE: Needs to be FALSE!
+								return( FALSE );
+							}
 
 						}
 					}
