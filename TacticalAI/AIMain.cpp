@@ -355,7 +355,7 @@ void DebugQuestInfo(STR szOutput)
 }
 
 
-BOOLEAN InitAI( void )
+BOOLEAN InitAI( BOOLEAN fClearAILogs )
 {
 #ifdef JA2TESTVERSION
 	FILE *		DebugFile;
@@ -384,16 +384,40 @@ BOOLEAN InitAI( void )
 	}
 #endif
 
-	// sevenfm: Clear the AI debug txt file to prevent it from getting huge
-	remove("Logs\\AI_Decisions.txt");
-	//remove("Logs\\QuestInfo.txt");
-
-	// remove all individual files
-	CHAR8	buf[1024];
-	for (UINT16 cnt = 0; cnt < TOTAL_SOLDIERS; cnt++)
+	// sevenfm: Clear the AI debug txt file to prevent it from getting huge.
+	// Skipped when loading a saved game: reloading to retry a stall would otherwise erase the
+	// log of the stall being retried, which is exactly the run worth keeping. Sector changes
+	// and startup still clear, so the log stays bounded to one sector visit.
+	if ( fClearAILogs )
 	{
-		sprintf(buf, "Logs\\AI_Decisions [%d].txt", cnt);
-		remove(buf);
+		remove("Logs\\AI_Decisions.txt");
+		//remove("Logs\\QuestInfo.txt");
+
+		// remove all individual files
+		CHAR8	buf[1024];
+		for (UINT16 cnt = 0; cnt < TOTAL_SOLDIERS; cnt++)
+		{
+			sprintf(buf, "Logs\\AI_Decisions [%d].txt", cnt);
+			remove(buf);
+		}
+	}
+	else if ( gfLogsEnabled )
+	{
+		// The log survives the load, so mark where the reloaded run begins - otherwise repeated
+		// reloads of one fight read as a single impossible sequence of turns.
+		FILE* DebugFile;
+
+		if ((DebugFile = fopen("Logs\\AI_Decisions.txt", "a+t")) != NULL)
+		{
+			time_t tNow = time(0);
+			CHAR8 banner[1024];
+
+			sprintf(banner, "\n=============== game loaded  Day %d %02d:%02d  (clock %d)  %s",
+				guiDay, guiHour, guiMin, GetJA2Clock(), ctime(&tNow));	// ctime() ends in \n
+
+			fputs(banner, DebugFile);
+			fclose(DebugFile);
+		}
 	}
 
 	return( TRUE );

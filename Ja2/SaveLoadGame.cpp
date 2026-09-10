@@ -6398,7 +6398,7 @@ BOOLEAN LoadSavedGame( int ubSavedGameID )
 	RenderProgressBar( 0, 100 );
 	uiRelStartPerc = uiRelEndPerc;
 
-	InitAI();
+	InitAI( FALSE );	// FALSE: keep the AI log across a load, see InitAI()
 
 	//Update the mercs in the sector with the new soldier info
 	UpdateMercsInSector( gWorldSectorX, gWorldSectorY, gbWorldSectorZ );

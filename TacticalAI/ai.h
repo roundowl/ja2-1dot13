@@ -236,7 +236,7 @@ void HandleInitialRedAlert( INT8 bTeam, UINT8 ubCommunicate);
 void InitPanicSystem();
 INT16 InWaterOrGas(SOLDIERTYPE *pSoldier, INT32 sGridno);
 BOOLEAN IsActionAffordable(SOLDIERTYPE *pSoldier, INT8 bAction = AI_ACTION_NONE);
-BOOLEAN InitAI( void );
+BOOLEAN InitAI( BOOLEAN fClearAILogs = TRUE );
 
 void MakeClosestEnemyChosenOne();
 void ManChecksOnFriends(SOLDIERTYPE *pSoldier);
