@@ -557,13 +557,8 @@ UINT32	MainGameScreenHandle(void)
 		{
 			if ( (( GetJA2Clock( ) - gTacticalStatus.uiTimeSinceDemoOn ) > 3000) || is_client)//unpause straight away if in MP
 			{
-				if ( gTacticalStatus.ubCurrentTeam != gbPlayerNum )
-				{
-					gTacticalStatus.ubEnemySightingOnTheirTurnEnemyID->AdjustNoAPToFinishMove( FALSE );
-				}
-				gTacticalStatus.ubEnemySightingOnTheirTurnEnemyID->flags.fPauseAllAnimation = FALSE;
-
-				gTacticalStatus.fEnemySightingOnTheirTurn = FALSE;
+				// releases the soldier we were showing off AND anyone else the pause halted
+				ReleaseEnemySightingPause( );
 			}
 		}
 	}

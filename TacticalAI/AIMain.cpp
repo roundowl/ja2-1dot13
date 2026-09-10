@@ -964,6 +964,22 @@ void EndAIDeadlock(void)
 	SOLDIERTYPE *pSoldier;
 	INT8 bFound=FALSE;
 
+	// We only get here because something is already stuck, so undo the two things that can
+	// leave a soldier's animation frozen part way through a script: the sighting demo pause,
+	// and the white hit-flash shade it latches when it freezes a hit animation between
+	// animation opcodes 438 and 439. Without this the victim keeps glowing white for the rest
+	// of the battle even though the AI has been unstuck.
+	ReleaseEnemySightingPause();
+
+	for (cnt=0,pSoldier=Menptr; cnt < MAXMERCS; cnt++,pSoldier++)
+	{
+		if ( pSoldier->bActive && pSoldier->bInSector )
+		{
+			pSoldier->flags.fPauseAllAnimation = FALSE;
+			pSoldier->flags.fForceShade = FALSE;
+		}
+	}
+
 	// ESCAPE ENEMY'S TURN
 
 	// find enemy with problem and free him up...

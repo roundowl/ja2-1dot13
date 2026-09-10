@@ -159,6 +159,14 @@ UINT32 guiAIAwaySlotToHandle = RESET_HANDLE_OF_OFF_MAP_MERCS;
 
 #define PAUSE_ALL_AI_DELAY 1500
 
+// The "we just spotted someone on their turn" demo pause (opplist.cpp) halts every soldier that
+// happens to be moving, but only ever releases the one soldier it recorded in
+// ubEnemySightingOnTheirTurnEnemyID. Anyone else it halted stayed halted, which froze their
+// animation for good in ExecuteOverhead() - and a frozen animation never ends, so the attack
+// busy count it was holding never dropped and the AI sat there until the deadlock breaker.
+// Remember who we halted so the release can undo all of it.
+static BOOLEAN gfHaltedBySighting[ TOTAL_SOLDIERS ] = { FALSE };
+
 BOOLEAN     gfPauseAllAI = FALSE;
 INT32       giPauseAllAITimer = 0;
 
@@ -2920,6 +2928,7 @@ BOOLEAN HandleAtNewGridNo( SOLDIERTYPE *pSoldier, BOOLEAN *pfKeepMoving )
     {
         // Hault guy!
         pSoldier->AdjustNoAPToFinishMove( TRUE );
+        gfHaltedBySighting[ pSoldier->ubID.i ] = TRUE;
         (*pfKeepMoving ) = FALSE;
     }
 
@@ -9889,6 +9898,45 @@ SOLDIERTYPE * ReduceAttackBusyCount( )
     // 0verhaul:    This is now a simple subroutine.
     return InternalReduceAttackBusyCount( );
 }
+
+// End the sighting demo pause and undo everything it did: the recorded soldier, plus any
+// soldier the pause halted in HandleSoldierMovement(). Also drops the held white hit-flash
+// shade, which is latched between animation opcodes 438 and 439 and so survives forever if the
+// animation was frozen part way through a hit.
+void ReleaseEnemySightingPause( void )
+{
+    UINT32 uiLoop;
+    SOLDIERTYPE *pSoldier;
+
+    if ( gTacticalStatus.ubEnemySightingOnTheirTurnEnemyID != NOBODY )
+    {
+        if ( gTacticalStatus.ubCurrentTeam != gbPlayerNum )
+        {
+            gTacticalStatus.ubEnemySightingOnTheirTurnEnemyID->AdjustNoAPToFinishMove( FALSE );
+        }
+        gTacticalStatus.ubEnemySightingOnTheirTurnEnemyID->flags.fPauseAllAnimation = FALSE;
+        gfHaltedBySighting[ gTacticalStatus.ubEnemySightingOnTheirTurnEnemyID.i ] = FALSE;
+    }
+
+    for ( uiLoop = 0; uiLoop < guiNumMercSlots; ++uiLoop )
+    {
+        pSoldier = MercSlots[ uiLoop ];
+
+        if ( pSoldier == NULL )
+        {
+            continue;
+        }
+
+        if ( gfHaltedBySighting[ pSoldier->ubID.i ] )
+        {
+            pSoldier->AdjustNoAPToFinishMove( FALSE );
+            gfHaltedBySighting[ pSoldier->ubID.i ] = FALSE;
+        }
+    }
+
+    gTacticalStatus.fEnemySightingOnTheirTurn = FALSE;
+}
+
 
 SOLDIERTYPE * FreeUpAttacker( )
 {
