@@ -6170,9 +6170,12 @@ INT16 ubMinAPCost;
 		if (ubCanMove && pSoldier->aiData.bOrders != STATIONARY && !gfHiddenInterrupt &&
 			!(pSoldier->flags.uiStatusFlags & SOLDIER_BOXER) )
 		{
-			// make militia a bit more cautious
+			// make militia a bit more cautious. PreRandom(N) > ubChanceToReallyHit clears more
+			// often as N grows, so the militia bound has to be the LARGER one - it was 20 against
+			// everyone else's 40, which made them the reckless ones and did the opposite of the
+			// comment. Enemies keep 40; militia now break off a hopeless shot more readily.
 			// 3 (UINT16) CONVERSIONS HERE TO AVOID ERRORS.  GOTTHARD 7/15/08
-			if (pSoldier->bTeam == MILITIA_TEAM && (INT16)(PreRandom(20)) > BestAttack.ubChanceToReallyHit ||
+			if (pSoldier->bTeam == MILITIA_TEAM && (INT16)(PreRandom(60)) > BestAttack.ubChanceToReallyHit ||
 				pSoldier->bTeam != MILITIA_TEAM && (INT16)(PreRandom(40)) > BestAttack.ubChanceToReallyHit)
 			{
 				DebugAI(AI_MSG_INFO, pSoldier, String("Allow cover check"));
